@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ظل الأرباح - لوحة تحكم الخادم الأعلى</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0a0f;
+            color: #c0c0c0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .dashboard {
+            max-width: 750px;
+            width: 100%;
+            background: #14141c;
+            padding: 30px 25px;
+            border-radius: 28px;
+            border: 1px solid #2a2a3a;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 30px rgba(100, 0, 255, 0.15);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2a2a3a;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            font-size: 22px;
+            color: #e0e0ff;
+            letter-spacing: 1px;
+            font-weight: 300;
+        }
+        .header h1 span {
+            color: #a855f7;
+            font-weight: 700;
+        }
+        .status-badge {
+            background: #1f1f2e;
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 13px;
+            border: 1px solid #3a3a5a;
+        }
+        .status-badge.active {
+            border-color: #22c55e;
+            color: #4ade80;
+            box-shadow: 0 0 15px #22c55e33;
+        }
+        .input-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        .input-section input {
+            flex: 1;
+            padding: 14px 18px;
+            border-radius: 16px;
+            border: 1px solid #2d2d44;
+            background: #1a1a26;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: 0.3s;
+            text-align: center;
+            font-family: monospace;
+            letter-spacing: 1px;
+        }
+        .input-section input:focus {
+            border-color: #a855f7;
+            box-shadow: 0 0 20px #a855f733;
+        }
+        .input-section button {
+            padding: 14px 28px;
+            background: #a855f7;
+            border: none;
+            border-radius: 16px;
+            color: #fff;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+        .input-section button:hover {
+            background: #7c3aed;
+            transform: scale(0.97);
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .card {
+            background: #1a1a28;
+            padding: 18px 15px;
+            border-radius: 18px;
+            border: 1px solid #25253a;
+            text-align: center;
+        }
+        .card .label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #7a7a9a;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        .card .value {
+            font-size: 22px;
+            font-weight: 600;
+            color: #f0f0ff;
+            font-family: monospace;
+            direction: ltr;
+        }
+        .card .value.gold {
+            color: #fbbf24;
+        }
+        .card .value.green {
+            color: #4ade80;
+        }
+        .card .value.purple {
+            color: #c084fc;
+        }
+        .sub {
+            font-size: 12px;
+            color: #6a6a8a;
+            margin-top: 5px;
+        }
+        .full-width {
+            grid-column: span 2;
+        }
+        .wallet-box {
+            background: #0d0d16;
+            padding: 12px 16px;
+            border-radius: 14px;
+            margin-top: 10px;
+            border: 1px dashed #3a3a5a;
+            direction: ltr;
+            text-align: center;
+            font-family: monospace;
+            font-size: 14px;
+            color: #b0b0d0;
+            word-break: break-all;
+            user-select: all;
+        }
+        .note {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #5a5a7a;
+            text-align: center;
+            border-top: 1px solid #1f1f2e;
+            padding-top: 18px;
+        }
+        .refresh-time {
+            font-size: 11px;
+            color: #4a4a6a;
+            margin-top: 8px;
+        }
+        .error-msg {
+            color: #f87171;
+            background: #2a1414;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #5a2a2a;
+            margin: 15px 0;
+            text-align: center;
+            display: none;
+        }
+        @media (max-width: 500px) {
+            .card-grid { grid-template-columns: 1fr; }
+            .full-width { grid-column: span 1; }
+            .header h1 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+
+    <div class="header">
+        <h1>⚡ <span>ظل</span> الأرباح</h1>
+        <div class="status-badge" id="statusBadge">⏳ جارِ التحقق</div>
+    </div>
+
+    <div class="input-section">
+        <input type="text" id="walletInput" placeholder="ألصق عنوان محفظة ZEPH هنا..." value="">
+        <button onclick="fetchData()">🔍 تتبّع</button>
+    </div>
+
+    <div id="errorBox" class="error-msg">⚠️ لا يمكن جلب البيانات. تأكد من العنوان.</div>
+
+    <div class="card-grid" id="statsGrid">
+        <div class="card full-width">
+            <div class="label">📌 محفظة الاستلام (لإرسال الأموال إليك)</div>
+            <div class="wallet-box" id="displayWallet">لم يتم إدخال محفظة بعد</div>
+        </div>
+
+        <div class="card">
+            <div class="label">⚙️ سرعة التعدين</div>
+            <div class="value purple" id="hashrate">0 H/s</div>
+            <div class="sub">القوة الحالية</div>
+        </div>
+
+        <div class="card">
+            <div class="label">💰 الرصيد غير المدفوع</div>
+            <div class="value gold" id="unpaid">0.0000 ZEPH</div>
+            <div class="sub">الأموال التي تنتظر السحب</div>
+        </div>
+
+        <div class="card full-width">
+            <div class="label">📈 الربح المتوقع خلال 24 ساعة</div>
+            <div class="value green" id="dailyEstimate">0.0000 ZEPH</div>
+            <div class="sub" id="usdEstimate">≈ 0.00 دولار أمريكي</div>
+        </div>
+
+        <div class="card full-width">
+            <div class="label">🔄 آخر تحديث</div>
+            <div class="refresh-time" id="lastUpdate">في انتظار التحديث...</div>
+        </div>
+    </div>
+
+    <div class="note">
+        🕷️ البيانات مسحوبة مباشرة من خوادم Herominers. التحديث التلقائي كل 30 ثانية.
+    </div>
+</div>
+
+<script>
+    let refreshInterval = null;
+    const WALLET_STORAGE_KEY = 'shadow_wallet';
+
+    // دالة لحساب الربح اليومي بالدولار (سعر تقريبي لـ ZEPH = 0.12 دولار - قابل للتعديل حسب السوق الحقيقي)
+    const ZEPH_PRICE_USD = 0.12; 
+
+    async function fetchData() {
+        const input = document.getElementById('walletInput');
+        let wallet = input.value.trim();
+
+        // إذا كان الحقل فارغاً، حاول جلب المحفظة المخزنة
+        if (!wallet) {
+            wallet = localStorage.getItem(WALLET_STORAGE_KEY);
+            if (wallet) input.value = wallet;
+            else {
+                document.getElementById('displayWallet').innerText = '⚠️ يرجى إدخال المحفظة أولاً';
+                document.getElementById('statusBadge').innerHTML = '🔴 مطلوب إدخال';
+                return;
+            }
+        }
+
+        // تخزين المحفظة في المتصفح
+        localStorage.setItem(WALLET_STORAGE_KEY, wallet);
+        document.getElementById('displayWallet').innerText = wallet;
+
+        // تحديث حالة الاتصال
+        const badge = document.getElementById('statusBadge');
+        badge.innerHTML = '⏳ جارِ السحب...';
+        badge.className = 'status-badge';
+
+        const errorBox = document.getElementById('errorBox');
+        errorBox.style.display = 'none';
+
+        try {
+            // استدعاء API المسبح الخاص بـ Zephyr
+            const response = await fetch(`https://zephyr.herominers.com/api/miner/${wallet}/stats`);
+            if (!response.ok) throw new Error('المحفظة غير موجودة أو خطأ في الشبكة');
+            
+            const data = await response.json();
+
+            // التحقق من وجود البيانات الأساسية
+            if (!data || !data.stats) throw new Error('لا توجد إحصائيات لهذه المحفظة');
+
+            const stats = data.stats;
+
+            // استخراج القيم (مع التعامل مع القيم الصفرية)
+            const hashrate = stats.hashrate || 0;
+            const unpaid = stats.amtDue || 0;
+            // المتوقع اليومي: بعض الـ APIs ترجع 'estimate' مباشرة بالـ ZEPH لليوم، وإلا نحسبها تقريباً
+            let dailyEstimate = stats.estimate || 0; 
+            // إذا كانت قيمة الـ estimate صفرية جداً، نستخدم معادلة تقريبية بناءً على السرعة (تقريبية جداً للعرض فقط)
+            if (dailyEstimate < 0.0001 && hashrate > 0) {
+                // معادلة تقريبية: (السرعة * 0.000001) * 24 ساعة (للتقدير البصري)
+                dailyEstimate = (hashrate / 1000) * 0.003; 
+            }
+
+            // تحديث العناصر في الواجهة
+            document.getElementById('hashrate').innerHTML = `${formatHashrate(hashrate)}`;
+            document.getElementById('unpaid').innerHTML = `${unpaid.toFixed(6)} ZEPH`;
+            document.getElementById('dailyEstimate').innerHTML = `${dailyEstimate.toFixed(6)} ZEPH`;
+
+            // حساب القيمة بالدولار
+            const usdValue = dailyEstimate * ZEPH_PRICE_USD;
+            document.getElementById('usdEstimate').innerHTML = `≈ ${usdValue.toFixed(2)} دولار أمريكي (بسعر ~${ZEPH_PRICE_USD}$)`;
+
+            // تحديث حالة النشاط
+            const lastShare = stats.lastShare || 0;
+            const now = Date.now() / 1000;
+            const isActive = (now - lastShare) < 600; // نشط خلال آخر 10 دقائق
+
+            if (isActive && hashrate > 0) {
+                badge.innerHTML = '🟢 نشط و يعمل';
+                badge.className = 'status-badge active';
+            } else if (hashrate === 0) {
+                badge.innerHTML = '🟡 خامل (قوة صفرية)';
+                badge.className = 'status-badge';
+            } else {
+                badge.innerHTML = '🔴 غير نشط (آخر مساهمة قديمة)';
+                badge.className = 'status-badge';
+            }
+
+            // وقت التحديث
+            const nowTime = new Date();
+            document.getElementById('lastUpdate').innerHTML = `تم التحديث: ${nowTime.toLocaleTimeString()}`;
+
+        } catch (error) {
+            console.error(error);
+            errorBox.style.display = 'block';
+            errorBox.innerText = `⚠️ خطأ: ${error.message}`;
+            badge.innerHTML = '❌ فشل الاتصال';
+            badge.className = 'status-badge';
+        }
+    }
+
+    function formatHashrate(h) {
+        if (h >= 1e6) return (h / 1e6).toFixed(2) + ' MH/s';
+        if (h >= 1e3) return (h / 1e3).toFixed(2) + ' KH/s';
+        return h.toFixed(0) + ' H/s';
+    }
+
+    // تحميل المحفظة المخزنة عند فتح الصفحة
+    window.onload = function() {
+        const saved = localStorage.getItem(WALLET_STORAGE_KEY);
+        if (saved) {
+            document.getElementById('walletInput').value = saved;
+            fetchData(); // جلب مباشر
+        }
+
+        // تفعيل التحديث التلقائي كل 30 ثانية
+        if (refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(fetchData, 30000);
+    };
+</script>
+</body>
+</html>
